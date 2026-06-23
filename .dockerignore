@@ -1,0 +1,12 @@
+.venv/
+frontend/
+.git/
+**/__pycache__/
+*.pyc
+backend/uploads/
+backend/thumbs/
+backend/data/
+backend/models/
+.env
+*.env
+.DS_Store
