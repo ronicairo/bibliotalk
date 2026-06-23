@@ -62,7 +62,7 @@ export default function SharePage() {
     return () => ro.disconnect();
   }, [isMobile]);
 
-  const pageWidth = vw ? Math.max(280, Math.min(vw - 24, 950)) * zoom : 0;
+  const pageWidth = vw ? Math.min(vw - 24, 950) * zoom : 0;
 
   const onScroll = () => {
     const el = scrollRef.current;
@@ -122,7 +122,7 @@ export default function SharePage() {
             <button onClick={() => setZoom((z) => Math.max(0.5, z - 0.15))} style={navBtn}>➖</button>
             <button onClick={() => setZoom((z) => Math.min(3, z + 0.15))} style={navBtn}>➕</button>
           </div>
-          <div ref={scrollRef} onScroll={onScroll} style={{ overflowY: "auto", overflowX: "hidden", minHeight: 0, padding: 12 }}>
+          <div ref={scrollRef} onScroll={onScroll} style={{ overflow: "auto", minHeight: 0, padding: 12 }}>
             {pdf && Array.from({ length: numPages }, (_, i) => (
               <PdfPage key={i} pdf={pdf} pageNumber={i + 1} width={pageWidth} />
             ))}

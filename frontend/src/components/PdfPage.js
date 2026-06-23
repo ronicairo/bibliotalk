@@ -29,8 +29,9 @@ export default function PdfPage({ pdf, pageNumber, width }) {
   }, [pdf, pageNumber, width]);
 
   return (
-    <div data-page={pageNumber} style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
-      <canvas ref={canvasRef} style={{ display: "block", borderRadius: 8, boxShadow: "var(--shadow)", maxWidth: "100%" }} />
+    <div data-page={pageNumber} style={{ marginBottom: 12 }}>
+      {/* margin auto = centré quand plus étroit que la zone ; défile quand plus large (zoom) */}
+      <canvas ref={canvasRef} style={{ display: "block", margin: "0 auto", borderRadius: 8, boxShadow: "var(--shadow)" }} />
     </div>
   );
 }

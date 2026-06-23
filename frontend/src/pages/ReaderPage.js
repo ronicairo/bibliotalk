@@ -60,8 +60,8 @@ export default function ReaderPage() {
     return () => ro.disconnect();
   }, [chatOpen, isMobile]);
 
-  // Largeur de rendu d'une page (ajustée à la zone, plafonnée pour la lisibilité, × zoom)
-  const pageWidth = vw ? Math.max(280, Math.min(vw - 24, 950)) * zoom : 0;
+  // Largeur de rendu : à zoom 1, tient exactement dans la zone (jamais plus large) ; plafonnée à 950 sur grand écran
+  const pageWidth = vw ? Math.min(vw - 24, 950) * zoom : 0;
 
   // Indicateur de page courante au scroll
   const onScroll = () => {
@@ -105,19 +105,18 @@ export default function ReaderPage() {
     <div style={{ display: "grid", ...outerStyle, height: "100%", background: "var(--bg)", color: "var(--text)" }}>
       {/* ===== Colonne PDF ===== */}
       <div style={{ display: "grid", gridTemplateRows: "auto 1fr", minWidth: 0, minHeight: 0, borderRight: !isMobile && chatOpen ? "1px solid var(--border)" : "none" }}>
-        {/* Barre d'outils */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderBottom: "1px solid var(--border)", background: "var(--card)" }}>
-          <div style={{ fontWeight: 700, color: "var(--title)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{docTitle}</div>
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-            <span style={{ opacity: 0.8, fontSize: 14 }}>{currentPage} / {numPages || "…"}</span>
-            <span style={{ width: 1, height: 20, background: "var(--border)", margin: "0 4px" }} />
-            <button onClick={() => setZoom((z) => Math.max(0.5, z - 0.15))} style={iconBtn}>➖</button>
-            <button onClick={() => setZoom((z) => Math.min(3, z + 0.15))} style={iconBtn}>➕</button>
-            <button onClick={() => setChatOpen((o) => !o)} title={chatOpen ? "Masquer le chat" : "Afficher le chat"} style={{ ...iconBtn, background: chatOpen ? "var(--primary)" : "var(--bg)", color: chatOpen ? "#fff" : "var(--text)" }}>💬</button>
+        {/* Barre d'outils (compacte + repliable sur petit écran) */}
+        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, padding: isMobile ? "8px 10px" : "10px 14px", borderBottom: "1px solid var(--border)", background: "var(--card)" }}>
+          <div style={{ flex: "1 1 120px", minWidth: 0, fontWeight: 700, color: "var(--title)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: isMobile ? 15 : 16 }}>{docTitle}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+            <span style={{ opacity: 0.8, fontSize: 13, whiteSpace: "nowrap" }}>{currentPage} / {numPages || "…"}</span>
+            <button onClick={() => setZoom((z) => Math.max(0.5, z - 0.15))} style={miniBtn}>➖</button>
+            <button onClick={() => setZoom((z) => Math.min(3, z + 0.15))} style={miniBtn}>➕</button>
+            <button onClick={() => setChatOpen((o) => !o)} title={chatOpen ? "Masquer le chat" : "Afficher le chat"} style={{ ...miniBtn, background: chatOpen ? "var(--primary)" : "var(--bg)", color: chatOpen ? "#fff" : "var(--text)" }}>💬</button>
           </div>
         </div>
-        {/* Zone PDF scrollable (toutes les pages) */}
-        <div ref={scrollRef} onScroll={onScroll} style={{ overflowY: "auto", overflowX: "hidden", minHeight: 0, padding: 12, background: "var(--bg)" }}>
+        {/* Zone PDF scrollable (toutes les pages) — overflow auto pour défiler horizontalement si zoom */}
+        <div ref={scrollRef} onScroll={onScroll} style={{ overflow: "auto", minHeight: 0, padding: 12, background: "var(--bg)" }}>
           {pdfError ? (
             <div style={{ maxWidth: 420, margin: "40px auto", padding: 20, textAlign: "center", background: "var(--card)", border: "1px solid var(--danger)", borderRadius: 12 }}>
               <div style={{ fontSize: 30, marginBottom: 8 }}>⚠️</div>
@@ -199,5 +198,6 @@ export default function ReaderPage() {
 }
 
 const iconBtn = { padding: "6px 10px", background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 8, cursor: "pointer" };
+const miniBtn = { padding: "5px 9px", fontSize: 14, lineHeight: 1, background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 8, cursor: "pointer" };
 const chip = { textAlign: "left", padding: "8px 12px", background: "var(--bg)", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 10, cursor: "pointer" };
 const sourceTag = { padding: "3px 8px", fontSize: 12, background: "var(--card)", color: "var(--primary)", border: "1px solid var(--primary)", borderRadius: 20, cursor: "pointer" };
