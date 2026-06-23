@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import api, { mediaUrl } from "../api";
 import useIsMobile from "../hooks/useIsMobile";
+import PdfPage from "../components/PdfPage";
 import * as pdfjsLib from "pdfjs-dist";
 
 // Worker pdf.js depuis le CDN (version exacte) — robuste en prod, évite le bug "require is not defined"
@@ -11,246 +12,188 @@ export default function ReaderPage() {
   const { docId } = useParams();
   const isMobile = useIsMobile();
 
-  // Refs PDF
-  const canvasRef = useRef(null);
   const scrollRef = useRef(null);
-  const renderTaskRef = useRef(null);
   const chatEndRef = useRef(null);
 
   // State PDF
   const [pdf, setPdf] = useState(null);
   const [numPages, setNumPages] = useState(0);
-  const [pageNum, setPageNum] = useState(1);
-  const [scale, setScale] = useState(1.2);
-  const [fitToWidth, setFitToWidth] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [zoom, setZoom] = useState(1); // multiplicateur de zoom
+  const [vw, setVw] = useState(0);     // largeur dispo de la zone PDF
   const [docTitle, setDocTitle] = useState("");
   const [pdfError, setPdfError] = useState(null);
 
   // State Chat
+  const [chatOpen, setChatOpen] = useState(true);
   const [question, setQuestion] = useState("");
-  const [messages, setMessages] = useState([]); // {role, text, matches?}
+  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [cloud, setCloud] = useState(null); // {is_cloud, provider}
+  const [cloud, setCloud] = useState(null);
 
-  // Savoir si le moteur est local (privé) ou cloud (tiers) -> avertissement
   useEffect(() => {
     api.get("/health").then(({ data }) => setCloud(data)).catch(() => {});
   }, []);
 
-  // 1) Charger le doc + PDF.js
+  // Charger le doc + PDF
   useEffect(() => {
     (async () => {
       const { data } = await api.get(`/doc/${docId}`);
       setDocTitle(data?.metadata?.title || data?.file_name || "Document");
       if (data?.file_url) {
         const task = pdfjsLib.getDocument(mediaUrl(data.file_url));
-        task.promise.then((loaded) => {
-          setPdf(loaded);
-          setNumPages(loaded.numPages);
-          setPageNum(1);
-          setPdfError(null);
-        }).catch((err) => {
-          console.error("Chargement PDF échoué:", err);
-          setPdfError(err?.message || "Impossible de charger le PDF.");
-        });
+        task.promise
+          .then((loaded) => { setPdf(loaded); setNumPages(loaded.numPages); setPdfError(null); })
+          .catch((err) => { console.error("Chargement PDF échoué:", err); setPdfError(err?.message || "Impossible de charger le PDF."); });
       }
     })();
   }, [docId]);
 
-  // 2) Rendu HiDPI + fit-to-width
-  const renderPage = async (num, loadedPdf = pdf) => {
-    if (!loadedPdf) return;
-    const page = await loadedPdf.getPage(num);
-    const baseViewport = page.getViewport({ scale: 1 });
+  // Mesure la largeur de la zone PDF (et la met à jour si la fenêtre/le panneau change)
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => setVw(el.clientWidth);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [chatOpen, isMobile]);
 
-    let effectiveScale = scale;
-    if (fitToWidth && scrollRef.current) {
-      // Ajuste pour que la PAGE ENTIÈRE tienne dans la zone visible (ni trop grande, ni scroll)
-      const availW = Math.max(320, (scrollRef.current.clientWidth || 800) - 32);
-      const availH = Math.max(320, (scrollRef.current.clientHeight || 600) - 32);
-      effectiveScale = Math.min(availW / baseViewport.width, availH / baseViewport.height);
-    }
-    const viewport = page.getViewport({ scale: effectiveScale });
+  // Largeur de rendu d'une page (ajustée à la zone, plafonnée pour la lisibilité, × zoom)
+  const pageWidth = vw ? Math.max(280, Math.min(vw - 24, 950)) * zoom : 0;
 
-    const canvas = canvasRef.current;
-    const context = canvas.getContext("2d");
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
-    canvas.style.width = `${Math.floor(viewport.width)}px`;
-    canvas.style.height = `${Math.floor(viewport.height)}px`;
-    canvas.width = Math.floor(viewport.width * dpr);
-    canvas.height = Math.floor(viewport.height * dpr);
-
-    if (renderTaskRef.current) {
-      try { renderTaskRef.current.cancel(); } catch (_) {}
-    }
-    const task = page.render({
-      canvasContext: context,
-      viewport,
-      transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : undefined,
+  // Indicateur de page courante au scroll
+  const onScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const top = el.getBoundingClientRect().top;
+    let cur = 1;
+    el.querySelectorAll("[data-page]").forEach((p) => {
+      if (p.getBoundingClientRect().top - top < el.clientHeight * 0.4) cur = Number(p.dataset.page);
     });
-    renderTaskRef.current = task;
-    task.promise.catch((err) => {
-      if (err?.name !== "RenderingCancelledException") console.error("PDF.js:", err);
-    });
+    setCurrentPage(cur);
   };
 
-  useEffect(() => {
-    if (!pdf) return;
-    renderPage(pageNum);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pdf, pageNum, scale, fitToWidth]);
+  const goToPage = (p) => {
+    scrollRef.current?.querySelector(`[data-page="${p}"]`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
-  useEffect(() => {
-    if (!pdf || !fitToWidth) return;
-    const onResize = () => renderPage(pageNum);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pdf, pageNum, fitToWidth]);
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
 
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
-
-  // Navigation
-  const prevPage = () => setPageNum((p) => Math.max(1, p - 1));
-  const nextPage = () => setPageNum((p) => Math.min(numPages, p + 1));
-  const zoomIn = () => { setFitToWidth(false); setScale((s) => s + 0.2); };
-  const zoomOut = () => { setFitToWidth(false); setScale((s) => Math.max(0.5, s - 0.2)); };
-  const goToPage = (p) => { if (p >= 1 && p <= numPages) { setFitToWidth(true); setPageNum(p); } };
-
-  // Q/A
   const askQuestion = async () => {
     const q = question.trim();
     if (!q || loading) return;
     setMessages((m) => [...m, { role: "user", text: q }]);
-    setQuestion("");
-    setLoading(true);
+    setQuestion(""); setLoading(true);
     try {
       const { data } = await api.post(`/ask`, { doc_id: docId, question: q });
       setMessages((m) => [...m, { role: "assistant", text: data.answer, matches: data.matches }]);
     } catch (e) {
-      setMessages((m) => [...m, { role: "assistant", text: "Erreur : le modèle local n'a pas répondu. Vérifie qu'Ollama est lancé.", matches: [] }]);
-    } finally {
-      setLoading(false);
-    }
+      setMessages((m) => [...m, { role: "assistant", text: "Le service de réponse est momentanément indisponible, réessaie dans un instant.", matches: [] }]);
+    } finally { setLoading(false); }
   };
 
-  const suggestions = [
-    "Résume ce document",
-    "Quels sont les points clés ?",
-    "Quelles sont les dates importantes ?",
-  ];
+  const suggestions = ["Résume ce document", "Quels sont les points clés ?", "Quelles sont les dates importantes ?"];
+
+  // Disposition : colonnes (desktop) ou lignes (mobile) ; le chat se replie
+  const outerStyle = isMobile
+    ? { gridTemplateRows: chatOpen ? "1fr 45vh" : "1fr" }
+    : { gridTemplateColumns: chatOpen ? "1fr 420px" : "1fr" };
 
   return (
-    <div style={{ display: "grid", ...(isMobile ? { gridTemplateRows: "1fr 45vh" } : { gridTemplateColumns: "1fr 420px" }), height: "100%", background: "var(--bg)", color: "var(--text)" }}>
+    <div style={{ display: "grid", ...outerStyle, height: "100%", background: "var(--bg)", color: "var(--text)" }}>
       {/* ===== Colonne PDF ===== */}
-      <div style={{ display: "grid", gridTemplateRows: "auto 1fr", minWidth: 0, minHeight: 0, borderRight: isMobile ? "none" : "1px solid var(--border)" }}>
-        {/* Barre d'outils PDF */}
+      <div style={{ display: "grid", gridTemplateRows: "auto 1fr", minWidth: 0, minHeight: 0, borderRight: !isMobile && chatOpen ? "1px solid var(--border)" : "none" }}>
+        {/* Barre d'outils */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderBottom: "1px solid var(--border)", background: "var(--card)" }}>
-          <div style={{ fontWeight: 700, color: "var(--title)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{docTitle}</div>
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
-            <button onClick={prevPage} disabled={pageNum <= 1} style={iconBtn}>◀</button>
-            <span style={{ opacity: 0.8, fontSize: 14, minWidth: 70, textAlign: "center" }}>{pageNum} / {numPages || "…"}</span>
-            <button onClick={nextPage} disabled={pageNum >= numPages} style={iconBtn}>▶</button>
+          <div style={{ fontWeight: 700, color: "var(--title)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{docTitle}</div>
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+            <span style={{ opacity: 0.8, fontSize: 14 }}>{currentPage} / {numPages || "…"}</span>
             <span style={{ width: 1, height: 20, background: "var(--border)", margin: "0 4px" }} />
-            <button onClick={zoomOut} style={iconBtn}>➖</button>
-            <button onClick={zoomIn} style={iconBtn}>➕</button>
+            <button onClick={() => setZoom((z) => Math.max(0.5, z - 0.15))} style={iconBtn}>➖</button>
+            <button onClick={() => setZoom((z) => Math.min(3, z + 0.15))} style={iconBtn}>➕</button>
+            <button onClick={() => setChatOpen((o) => !o)} title={chatOpen ? "Masquer le chat" : "Afficher le chat"} style={{ ...iconBtn, background: chatOpen ? "var(--primary)" : "var(--bg)", color: chatOpen ? "#fff" : "var(--text)" }}>💬</button>
           </div>
         </div>
-        {/* Zone PDF */}
-        <div ref={scrollRef} style={{ overflowY: "auto", overflowX: "hidden", minHeight: 0, padding: 16, display: "flex", justifyContent: "center", alignItems: "flex-start", background: "var(--bg)" }}>
-          {pdfError && (
-            <div style={{ maxWidth: 420, margin: "auto", padding: 20, textAlign: "center", color: "var(--text)", background: "var(--card)", border: "1px solid var(--danger)", borderRadius: 12 }}>
+        {/* Zone PDF scrollable (toutes les pages) */}
+        <div ref={scrollRef} onScroll={onScroll} style={{ overflowY: "auto", overflowX: "hidden", minHeight: 0, padding: 12, background: "var(--bg)" }}>
+          {pdfError ? (
+            <div style={{ maxWidth: 420, margin: "40px auto", padding: 20, textAlign: "center", background: "var(--card)", border: "1px solid var(--danger)", borderRadius: 12 }}>
               <div style={{ fontSize: 30, marginBottom: 8 }}>⚠️</div>
               <div style={{ fontWeight: 700, marginBottom: 6 }}>Le PDF n'a pas pu se charger</div>
               <div style={{ fontSize: 13, opacity: 0.75 }}>{pdfError}</div>
-              <div style={{ fontSize: 12.5, opacity: 0.6, marginTop: 10 }}>Si tu utilises un VPN ou un bloqueur de publicités, désactive-le sur ce site puis recharge.</div>
             </div>
+          ) : (
+            pdf && Array.from({ length: numPages }, (_, i) => (
+              <PdfPage key={i} pdf={pdf} pageNumber={i + 1} width={pageWidth} />
+            ))
           )}
-          <canvas ref={canvasRef} style={{ display: pdfError ? "none" : "block", borderRadius: 8, boxShadow: "var(--shadow)" }} />
         </div>
       </div>
 
-      {/* ===== Panneau Chat ===== */}
-      <div style={{ display: "grid", gridTemplateRows: "auto 1fr auto", background: "var(--card)", minWidth: 0, minHeight: 0, borderTop: isMobile ? "1px solid var(--border)" : "none" }}>
-        {/* En-tête + avertissement (1ère rangée de la grille) */}
-        <div>
-        <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 20 }}>💬</span>
+      {/* ===== Panneau Chat (repliable) ===== */}
+      {chatOpen && (
+        <div style={{ display: "grid", gridTemplateRows: "auto 1fr auto", background: "var(--card)", minWidth: 0, minHeight: 0, borderTop: isMobile ? "1px solid var(--border)" : "none" }}>
           <div>
-            <div style={{ fontWeight: 700 }}>Discuter avec ce document</div>
-            <div style={{ fontSize: 12, opacity: 0.6 }}>
-      
+            <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 20 }}>💬</span>
+              <div style={{ fontWeight: 700, flex: 1 }}>Discuter avec ce document</div>
+              <button onClick={() => setChatOpen(false)} title="Fermer" style={{ ...iconBtn, fontSize: 18, lineHeight: 1 }}>✕</button>
             </div>
+            {cloud?.is_cloud && (
+              <div style={{ margin: "8px 16px 0", padding: "8px 12px", background: "rgba(245,158,11,0.12)", border: "1px solid #f59e0b", borderRadius: 8, fontSize: 12.5 }}>
+                ⚠️ Pour générer les réponses, des extraits sont envoyés à un service tiers ({cloud.provider}).
+              </div>
+            )}
+          </div>
+
+          <div style={{ overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
+            {messages.length === 0 && !loading && (
+              <div style={{ opacity: 0.7, fontSize: 14 }}>
+                <p style={{ marginTop: 0 }}>Pose une question sur le contenu de ce PDF :</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {suggestions.map((s) => <button key={s} onClick={() => setQuestion(s)} style={chip}>{s}</button>)}
+                </div>
+              </div>
+            )}
+            {messages.map((m, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
+                <div style={{ maxWidth: "92%", padding: "10px 14px", borderRadius: 14, whiteSpace: "pre-wrap", lineHeight: 1.5,
+                  background: m.role === "user" ? "var(--primary)" : "var(--bg)", color: m.role === "user" ? "#fff" : "var(--text)",
+                  border: m.role === "user" ? "none" : "1px solid var(--border)" }}>
+                  <div>{m.text}</div>
+                  {m.role === "assistant" && m.matches?.length > 0 && (
+                    <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {[...new Set(m.matches.map((x) => x.page))].filter(Boolean).map((p) => (
+                        <button key={p} onClick={() => goToPage(p)} title={`Aller à la page ${p}`} style={sourceTag}>page {p}</button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+            {loading && <div style={{ fontSize: 14, opacity: 0.8 }}><span className="bt-dots">Le document réfléchit…</span></div>}
+            <div ref={chatEndRef} />
+          </div>
+
+          <div style={{ padding: 12, borderTop: "1px solid var(--border)", display: "flex", gap: 8 }}>
+            <input style={{ flex: 1, padding: "12px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }}
+              placeholder="Pose ta question…" value={question} onChange={(e) => setQuestion(e.target.value)} onKeyDown={(e) => e.key === "Enter" && askQuestion()} disabled={loading} />
+            <button onClick={askQuestion} disabled={loading || !question.trim()} style={{ padding: "12px 18px", background: "var(--primary)", color: "#fff", border: "none", borderRadius: 10, cursor: "pointer", opacity: loading ? 0.6 : 1 }}>
+              {loading ? "…" : "Envoyer"}
+            </button>
           </div>
         </div>
+      )}
 
-        {/* Avertissement confidentialité (uniquement en mode cloud) */}
-        {cloud?.is_cloud && (
-          <div style={{ margin: "8px 16px 0", padding: "8px 12px", background: "rgba(245,158,11,0.12)", border: "1px solid #f59e0b", borderRadius: 8, fontSize: 12.5, color: "var(--text)" }}>
-            ⚠️ Pour générer les réponses, des extraits de ce document sont envoyés à un service tiers ({cloud.provider}). Ne pose pas de questions sur des données strictement confidentielles.
-          </div>
-        )}
-        </div>
-
-        {/* Historique */}
-        <div style={{ overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>
-          {messages.length === 0 && !loading && (
-            <div style={{ opacity: 0.7, fontSize: 14 }}>
-              <p style={{ marginTop: 0 }}>Pose une question sur le contenu de ce PDF. Par exemple :</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {suggestions.map((s) => (
-                  <button key={s} onClick={() => { setQuestion(s); }} style={chip}>{s}</button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {messages.map((m, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}>
-              <div style={{ maxWidth: "92%", padding: "10px 14px", borderRadius: 14, whiteSpace: "pre-wrap", lineHeight: 1.5,
-                background: m.role === "user" ? "var(--primary)" : "var(--bg)",
-                color: m.role === "user" ? "#fff" : "var(--text)",
-                border: m.role === "user" ? "none" : "1px solid var(--border)" }}>
-                <div>{m.text}</div>
-                {m.role === "assistant" && m.matches?.length > 0 && (
-                  <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {[...new Set(m.matches.map((x) => x.page))].filter(Boolean).map((p) => (
-                      <button key={p} onClick={() => goToPage(p)} title={`Aller à la page ${p}`} style={sourceTag}>page {p}</button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-
-          {loading && (
-            <div style={{ display: "flex", justifyContent: "flex-start" }}>
-              <div style={{ padding: "10px 14px", borderRadius: 14, background: "var(--bg)", border: "1px solid var(--border)", fontSize: 14, opacity: 0.8 }}>
-                <span className="bt-dots">Le document réfléchit…</span>
-              </div>
-            </div>
-          )}
-          <div ref={chatEndRef} />
-        </div>
-
-        {/* Saisie */}
-        <div style={{ padding: 12, borderTop: "1px solid var(--border)", display: "flex", gap: 8 }}>
-          <input
-            style={{ flex: 1, padding: "12px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--bg)", color: "var(--text)" }}
-            placeholder="Pose ta question…"
-            value={question}
-            onChange={(e) => setQuestion(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && askQuestion()}
-            disabled={loading}
-          />
-          <button onClick={askQuestion} disabled={loading || !question.trim()}
-            style={{ padding: "12px 18px", background: "var(--primary)", color: "#fff", border: "none", borderRadius: 10, cursor: loading ? "default" : "pointer", opacity: loading ? 0.6 : 1 }}>
-            {loading ? "…" : "Envoyer"}
-          </button>
-        </div>
-      </div>
+      {/* Bouton flottant pour rouvrir le chat quand il est fermé */}
+      {!chatOpen && (
+        <button onClick={() => setChatOpen(true)} title="Ouvrir le chat"
+          style={{ position: "fixed", bottom: 20, right: 20, zIndex: 20, width: 56, height: 56, borderRadius: "50%", background: "var(--primary)", color: "#fff", border: "none", fontSize: 24, cursor: "pointer", boxShadow: "0 6px 18px rgba(0,0,0,0.3)" }}>
+          💬
+        </button>
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import * as pdfjsLib from "pdfjs-dist";
 import api, { API_BASE } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import useIsMobile from "../hooks/useIsMobile";
+import PdfPage from "../components/PdfPage";
 
 // Worker pdf.js depuis le CDN (version exacte) — robuste en prod, évite le bug "require is not defined"
 pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
@@ -13,14 +14,14 @@ export default function SharePage() {
   const { user } = useAuth();
   const isMobile = useIsMobile();
 
-  const canvasRef = useRef(null);
   const scrollRef = useRef(null);
-  const renderTaskRef = useRef(null);
   const chatEndRef = useRef(null);
 
   const [pdf, setPdf] = useState(null);
   const [numPages, setNumPages] = useState(0);
-  const [pageNum, setPageNum] = useState(1);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [zoom, setZoom] = useState(1);
+  const [vw, setVw] = useState(0);
   const [title, setTitle] = useState("");
   const [notFound, setNotFound] = useState(false);
 
@@ -45,35 +46,35 @@ export default function SharePage() {
       .then((data) => {
         setTitle(data.title || data.file_name || "Document partagé");
         const task = pdfjsLib.getDocument(`${API_BASE}/share/${token}/file`);
-        task.promise.then((loaded) => { setPdf(loaded); setNumPages(loaded.numPages); setPageNum(1); });
+        task.promise.then((loaded) => { setPdf(loaded); setNumPages(loaded.numPages); }).catch(() => setNotFound(true));
       })
       .catch(() => setNotFound(true));
   }, [token]);
 
-  const renderPage = async (num, loadedPdf = pdf) => {
-    if (!loadedPdf) return;
-    const page = await loadedPdf.getPage(num);
-    const base = page.getViewport({ scale: 1 });
-    const availW = Math.max(320, (scrollRef.current?.clientWidth || 800) - 32);
-    const availH = Math.max(320, (scrollRef.current?.clientHeight || 600) - 32);
-    const viewport = page.getViewport({ scale: Math.min(availW / base.width, availH / base.height) });
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
-    canvas.style.width = `${Math.floor(viewport.width)}px`;
-    canvas.style.height = `${Math.floor(viewport.height)}px`;
-    canvas.width = Math.floor(viewport.width * dpr);
-    canvas.height = Math.floor(viewport.height * dpr);
-    if (renderTaskRef.current) { try { renderTaskRef.current.cancel(); } catch (_) {} }
-    const t = page.render({ canvasContext: ctx, viewport, transform: dpr !== 1 ? [dpr, 0, 0, dpr, 0, 0] : undefined });
-    renderTaskRef.current = t;
-    t.promise.catch((e) => { if (e?.name !== "RenderingCancelledException") console.error(e); });
+  // Mesure la largeur de la zone PDF
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const update = () => setVw(el.clientWidth);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [isMobile]);
+
+  const pageWidth = vw ? Math.max(280, Math.min(vw - 24, 950)) * zoom : 0;
+
+  const onScroll = () => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const top = el.getBoundingClientRect().top;
+    let cur = 1;
+    el.querySelectorAll("[data-page]").forEach((p) => {
+      if (p.getBoundingClientRect().top - top < el.clientHeight * 0.4) cur = Number(p.dataset.page);
+    });
+    setCurrentPage(cur);
   };
 
-  useEffect(() => {
-    if (pdf) renderPage(pageNum);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pdf, pageNum]);
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, loading]);
 
   const askQuestion = async () => {
@@ -116,12 +117,15 @@ export default function SharePage() {
         {/* PDF */}
         <div style={{ display: "grid", gridTemplateRows: "auto 1fr", minWidth: 0, minHeight: 0, borderRight: isMobile ? "none" : "1px solid var(--border)" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: 8, borderBottom: "1px solid var(--border)", background: "var(--card)" }}>
-            <button onClick={() => setPageNum((p) => Math.max(1, p - 1))} disabled={pageNum <= 1} style={navBtn}>◀</button>
-            <span style={{ fontSize: 14, opacity: 0.8 }}>{pageNum} / {numPages || "…"}</span>
-            <button onClick={() => setPageNum((p) => Math.min(numPages, p + 1))} disabled={pageNum >= numPages} style={navBtn}>▶</button>
+            <span style={{ fontSize: 14, opacity: 0.8 }}>{currentPage} / {numPages || "…"}</span>
+            <span style={{ width: 1, height: 18, background: "var(--border)", margin: "0 4px" }} />
+            <button onClick={() => setZoom((z) => Math.max(0.5, z - 0.15))} style={navBtn}>➖</button>
+            <button onClick={() => setZoom((z) => Math.min(3, z + 0.15))} style={navBtn}>➕</button>
           </div>
-          <div ref={scrollRef} style={{ overflow: "auto", minHeight: 0, padding: 16, display: "flex", justifyContent: "center", alignItems: "flex-start" }}>
-            <canvas ref={canvasRef} style={{ display: "block", borderRadius: 8, boxShadow: "var(--shadow)" }} />
+          <div ref={scrollRef} onScroll={onScroll} style={{ overflowY: "auto", overflowX: "hidden", minHeight: 0, padding: 12 }}>
+            {pdf && Array.from({ length: numPages }, (_, i) => (
+              <PdfPage key={i} pdf={pdf} pageNumber={i + 1} width={pageWidth} />
+            ))}
           </div>
         </div>
 
