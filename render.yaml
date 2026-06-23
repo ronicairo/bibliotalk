@@ -1,0 +1,25 @@
+# Blueprint de déploiement Render pour le backend BiblioTalk.
+# Render lit ce fichier à la racine du dépôt.
+services:
+  - type: web
+    name: bibliotalk-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: LLM_PROVIDER
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false          # à renseigner dans le dashboard Render (secret)
+      - key: CORS_ORIGINS
+        value: https://bibliotalk.fr,https://www.bibliotalk.fr
+      - key: MAX_FILES_PER_USER
+        value: "10"
+      - key: JWT_SECRET
+        generateValue: true  # Render génère une valeur aléatoire sûre
+      - key: ADMIN_EMAIL
+        value: roni.cairo@outlook.fr
+      - key: ADMIN_HASH
+        sync: false          # ton hash bcrypt $2y$ (secret, à mettre dans le dashboard)

@@ -1,0 +1,78 @@
+:root {
+  --bg: #f4f6fb;
+
+  --card: #ffffff;
+  --text: #1a1a1a;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --primary: #4587f0;
+  --accent: #747678;
+  --success: #16a34a;
+  --title: #000000;
+  --danger: #d41919;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --focus: 2px solid #2563eb;
+  a {
+    color: var(--title);
+    text-decoration: none;
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+[data-theme="dark"] {
+  --bg: #0e1420;
+  --card: #18202e;
+  --text: #f5f7ff;
+  --muted: #94a3b8;
+  --border: #2d3748;
+  --primary: #4587f0;
+  --accent: #747678;
+  --title: #ffffff;
+  --success: #22c55e;
+  --danger: #9a0d0d;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --focus: 2px solid #3b82f6;
+  a {
+    color: var(--title);
+    text-decoration: none;
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+}
+
+
+html, body, #root {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  transition: background 0.4s ease, color 0.3s ease;
+}
+
+/* Accessibilité focus */
+*:focus-visible {
+  outline: var(--focus);
+  outline-offset: 3px;
+}
+
+/* Animation "réflexion" du chat */
+.bt-dots::after {
+  content: "";
+  animation: bt-dots 1.2s steps(4, end) infinite;
+}
+@keyframes bt-dots {
+  0% { content: ""; }
+  25% { content: "."; }
+  50% { content: ".."; }
+  75% { content: "..."; }
+}
+
+button:disabled { cursor: not-allowed; opacity: 0.5; }
+
+/* Bouton ⋯ : discret, visible au survol de la carte */
+.bt-kebab { opacity: 0; transition: opacity 0.15s ease; }
+.bt-card:hover .bt-kebab { opacity: 1; }
+.bt-kebab:hover { background: rgba(0,0,0,0.75) !important; }

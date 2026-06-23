@@ -1,0 +1,28 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+get-pip.py
+
+# Secrets / env
+.env
+*.env
+!*.env.example
+
+# Données applicatives (ne pas committer)
+backend/uploads/
+backend/thumbs/
+backend/data/
+backend/models/
+backend/gdpr_requests.log
+
+# Frontend
+frontend/node_modules/
+frontend/build/
+
+# OS
+.DS_Store
+**/.DS_Store
+
+# Claude Code (réglages locaux : peuvent contenir des secrets)
+.claude/settings.local.json
