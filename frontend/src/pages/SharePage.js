@@ -5,8 +5,8 @@ import api, { API_BASE } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import useIsMobile from "../hooks/useIsMobile";
 
-// Worker servi depuis public/ (même origine, build-safe) — évite le bug "require is not defined" en prod
-pdfjsLib.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL || ""}/pdf.worker.min.js`;
+// Worker pdf.js depuis le CDN (version exacte) — robuste en prod, évite le bug "require is not defined"
+pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 export default function SharePage() {
   const { token } = useParams();
