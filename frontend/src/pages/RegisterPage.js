@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, Link, Navigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { wrap, card, lbl, inp, btn, errBox } from "./LoginPage";
+import PasswordInput from "../components/PasswordInput";
 
 export default function RegisterPage() {
   const { register, user } = useAuth();
@@ -37,9 +38,9 @@ export default function RegisterPage() {
         <label style={lbl}>Email</label>
         <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={inp} placeholder="toi@exemple.fr" />
         <label style={lbl}>Mot de passe</label>
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required style={inp} placeholder="6 caractères minimum" />
+        <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} required style={inp} placeholder="6 caractères minimum" />
         <label style={lbl}>Confirmer le mot de passe</label>
-        <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required style={inp} placeholder="••••••••" />
+        <PasswordInput value={confirm} onChange={(e) => setConfirm(e.target.value)} required style={inp} placeholder="••••••••" />
         <button type="submit" disabled={loading} style={btn}>{loading ? "Création…" : "S'inscrire"}</button>
         <p style={{ textAlign: "center", marginTop: 18, fontSize: 14 }}>
           Déjà inscrit ? <Link to="/login" style={{ color: "var(--primary)", fontWeight: 600 }}>Se connecter</Link>

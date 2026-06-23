@@ -1,0 +1,43 @@
+name: Déploiement du site sur Hostinger
+
+# Se déclenche à chaque push sur main qui touche le frontend
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/deploy-hostinger.yml"
+  workflow_dispatch: {} # permet aussi un déclenchement manuel
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Installer les dépendances
+        working-directory: frontend
+        run: npm ci
+
+      - name: Builder le site
+        working-directory: frontend
+        env:
+          CI: "false" # ne pas transformer les warnings en erreurs
+          REACT_APP_API_URL: https://bibliotalk-api.onrender.com
+        run: npm run build
+
+      - name: Envoyer sur Hostinger (FTP)
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./frontend/build/
+          server-dir: ${{ secrets.FTP_REMOTE_DIR }}
+          dangerous-clean-slate: false

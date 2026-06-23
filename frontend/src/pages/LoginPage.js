@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate, Link, Navigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import PasswordInput from "../components/PasswordInput";
 
 export default function LoginPage() {
   const { login, user } = useAuth();
@@ -32,7 +33,7 @@ export default function LoginPage() {
         <label style={lbl}>Email</label>
         <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={inp} placeholder="toi@exemple.fr" />
         <label style={lbl}>Mot de passe</label>
-        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required style={inp} placeholder="••••••••" />
+        <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} required style={inp} placeholder="••••••••" />
         <button type="submit" disabled={loading} style={btn}>{loading ? "Connexion…" : "Se connecter"}</button>
         <p style={{ textAlign: "center", marginTop: 18, fontSize: 14 }}>
           Pas encore de compte ? <Link to="/register" style={{ color: "var(--primary)", fontWeight: 600 }}>Créer un compte</Link>

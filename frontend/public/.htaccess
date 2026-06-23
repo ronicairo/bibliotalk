@@ -1,0 +1,10 @@
+# Routage SPA : toutes les routes inconnues renvoient vers index.html
+# (sinon /login, /library, /share/... donnent une 404 au rafraîchissement)
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>

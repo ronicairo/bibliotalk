@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../api";
 import { useAuth } from "../auth/AuthContext";
 import { useTheme } from "../theme/ThemeProvider";
+import PasswordInput from "../components/PasswordInput";
 
 export default function SettingsPage() {
   const { user, logout } = useAuth();
@@ -62,9 +63,9 @@ export default function SettingsPage() {
           <Row label="Email"><span style={{ opacity: 0.8 }}>{user?.email}</span></Row>
           <form onSubmit={changePassword} style={{ marginTop: 8 }}>
             <div style={{ fontWeight: 600, marginBottom: 10 }}>Changer le mot de passe</div>
-            <input type="password" placeholder="Mot de passe actuel" value={pwd.current} onChange={(e) => setPwd({ ...pwd, current: e.target.value })} required style={inp} />
-            <input type="password" placeholder="Nouveau mot de passe" value={pwd.next} onChange={(e) => setPwd({ ...pwd, next: e.target.value })} required style={inp} />
-            <input type="password" placeholder="Confirmer le nouveau mot de passe" value={pwd.confirm} onChange={(e) => setPwd({ ...pwd, confirm: e.target.value })} required style={inp} />
+            <PasswordInput placeholder="Mot de passe actuel" value={pwd.current} onChange={(e) => setPwd({ ...pwd, current: e.target.value })} required style={inp} />
+            <PasswordInput placeholder="Nouveau mot de passe" value={pwd.next} onChange={(e) => setPwd({ ...pwd, next: e.target.value })} required style={inp} />
+            <PasswordInput placeholder="Confirmer le nouveau mot de passe" value={pwd.confirm} onChange={(e) => setPwd({ ...pwd, confirm: e.target.value })} required style={inp} />
             {pwdMsg && <div style={{ fontSize: 14, marginTop: 4, color: pwdMsg.err ? "var(--danger)" : "var(--success)" }}>{pwdMsg.text}</div>}
             <button type="submit" style={{ ...solidBtn, marginTop: 12 }}>Mettre à jour</button>
           </form>
