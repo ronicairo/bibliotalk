@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import api, { mediaUrl } from "../api";
+import useIsMobile from "../hooks/useIsMobile";
 import * as pdfjsLib from "pdfjs-dist";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -10,6 +11,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 
 export default function ReaderPage() {
   const { docId } = useParams();
+  const isMobile = useIsMobile();
 
   // Refs PDF
   const canvasRef = useRef(null);
@@ -138,9 +140,9 @@ export default function ReaderPage() {
   ];
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 420px", height: "100%", background: "var(--bg)", color: "var(--text)" }}>
+    <div style={{ display: "grid", ...(isMobile ? { gridTemplateRows: "1fr 45vh" } : { gridTemplateColumns: "1fr 420px" }), height: "100%", background: "var(--bg)", color: "var(--text)" }}>
       {/* ===== Colonne PDF ===== */}
-      <div style={{ display: "grid", gridTemplateRows: "auto 1fr", minWidth: 0, borderRight: "1px solid var(--border)" }}>
+      <div style={{ display: "grid", gridTemplateRows: "auto 1fr", minWidth: 0, minHeight: 0, borderRight: isMobile ? "none" : "1px solid var(--border)" }}>
         {/* Barre d'outils PDF */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderBottom: "1px solid var(--border)", background: "var(--card)" }}>
           <div style={{ fontWeight: 700, color: "var(--title)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{docTitle}</div>
@@ -160,7 +162,7 @@ export default function ReaderPage() {
       </div>
 
       {/* ===== Panneau Chat ===== */}
-      <div style={{ display: "grid", gridTemplateRows: "auto 1fr auto", background: "var(--card)", minWidth: 0 }}>
+      <div style={{ display: "grid", gridTemplateRows: "auto 1fr auto", background: "var(--card)", minWidth: 0, minHeight: 0, borderTop: isMobile ? "1px solid var(--border)" : "none" }}>
         {/* En-tête + avertissement (1ère rangée de la grille) */}
         <div>
         <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8 }}>

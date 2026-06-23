@@ -27,8 +27,8 @@ export default function AdminUsersPage() {
       <p style={{ opacity: 0.65 }}>{users.length} compte{users.length > 1 ? "s" : ""}</p>
       {error && <p style={{ color: "var(--danger)" }}>{error}</p>}
 
-      <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden", boxShadow: "var(--shadow)" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+      <div style={{ background: "var(--card)", border: "1px solid var(--border)", borderRadius: 14, overflowX: "auto", boxShadow: "var(--shadow)" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 520 }}>
           <thead>
             <tr style={{ textAlign: "left", borderBottom: "1px solid var(--border)", opacity: 0.7, fontSize: 13 }}>
               <th style={th}>Email</th><th style={th}>Rôle</th><th style={th}>Inscrit le</th><th style={th}></th>

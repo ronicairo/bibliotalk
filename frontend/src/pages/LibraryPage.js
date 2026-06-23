@@ -146,10 +146,10 @@ export default function LibraryPage() {
     <div style={{ height: "100%", overflowY: "auto", background: "var(--bg)", color: "var(--text)" }}>
       <div style={{ padding: "24px 28px 0" }}>
         <h1 style={{ margin: 0, color: "var(--title)" }}>Ma bibliothèque</h1>
-        <div style={{ display: "flex", gap: 8, marginTop: 16, borderBottom: "1px solid var(--border)" }}>
+        <div style={{ display: "flex", gap: 8, marginTop: 16, borderBottom: "1px solid var(--border)", overflowX: "auto" }}>
           {tabs.map((t) => (
             <button key={t.id} onClick={() => { setTab(t.id); setCurrentFolder(null); }} style={{
-              padding: "10px 16px", background: "transparent", border: "none", cursor: "pointer", fontSize: 15,
+              padding: "10px 16px", background: "transparent", border: "none", cursor: "pointer", fontSize: 15, whiteSpace: "nowrap",
               color: tab === t.id ? "var(--primary)" : "var(--text)", fontWeight: tab === t.id ? 700 : 500,
               borderBottom: tab === t.id ? "2px solid var(--primary)" : "2px solid transparent", marginBottom: -1,
             }}>{t.icon} {t.label} <span style={{ opacity: 0.5, fontSize: 13 }}>({counts[t.id]})</span></button>

@@ -3,6 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import * as pdfjsLib from "pdfjs-dist";
 import api, { API_BASE } from "../api";
 import { useAuth } from "../auth/AuthContext";
+import useIsMobile from "../hooks/useIsMobile";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.js",
@@ -12,6 +13,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
 export default function SharePage() {
   const { token } = useParams();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
 
   const canvasRef = useRef(null);
   const scrollRef = useRef(null);
@@ -112,9 +114,9 @@ export default function SharePage() {
         </div>
       </div>
 
-      <div style={{ flex: 1, minHeight: 0, display: "grid", gridTemplateColumns: "1fr 400px" }}>
+      <div style={{ flex: 1, minHeight: 0, display: "grid", ...(isMobile ? { gridTemplateRows: "1fr 45vh" } : { gridTemplateColumns: "1fr 400px" }) }}>
         {/* PDF */}
-        <div style={{ display: "grid", gridTemplateRows: "auto 1fr", minWidth: 0, borderRight: "1px solid var(--border)" }}>
+        <div style={{ display: "grid", gridTemplateRows: "auto 1fr", minWidth: 0, minHeight: 0, borderRight: isMobile ? "none" : "1px solid var(--border)" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: 8, borderBottom: "1px solid var(--border)", background: "var(--card)" }}>
             <button onClick={() => setPageNum((p) => Math.max(1, p - 1))} disabled={pageNum <= 1} style={navBtn}>◀</button>
             <span style={{ fontSize: 14, opacity: 0.8 }}>{pageNum} / {numPages || "…"}</span>
@@ -126,7 +128,7 @@ export default function SharePage() {
         </div>
 
         {/* Chat (réservé aux connectés) */}
-        <div style={{ display: "grid", gridTemplateRows: "auto 1fr auto", background: "var(--card)", minWidth: 0 }}>
+        <div style={{ display: "grid", gridTemplateRows: "auto 1fr auto", background: "var(--card)", minWidth: 0, minHeight: 0, borderTop: isMobile ? "1px solid var(--border)" : "none" }}>
           <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border)", fontWeight: 700 }}>💬 Questions</div>
 
           <div style={{ overflowY: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 14 }}>

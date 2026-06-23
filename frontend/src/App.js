@@ -10,11 +10,13 @@ import LandingPage from "./pages/LandingPage";
 import SettingsPage from "./pages/SettingsPage";
 import { ThemeProvider } from "./theme/ThemeProvider";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
+import useIsMobile from "./hooks/useIsMobile";
 import "./theme/theme.css";
 
 function NavBar() {
   const { user, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const doLogout = () => { logout(); navigate("/login"); };
 
   return (
@@ -23,9 +25,9 @@ function NavBar() {
         <img src="/logo1.png" alt="BiblioTalk" style={{ height: 34, width: 34, borderRadius: 8 }} />
         BiblioTalk
       </Link>
-      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 14 }}>
         {isAdmin && <Link to="/admin" style={navLink}>Admin</Link>}
-        <span style={{ fontSize: 13, opacity: 0.7, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.email}</span>
+        {!isMobile && <span style={{ fontSize: 13, opacity: 0.7, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.email}</span>}
         <Link to="/settings" title="Paramètres" style={{ width: 38, height: 38, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text)", textDecoration: "none", fontSize: 16 }}>
           <i className="bi bi-gear"></i>
         </Link>

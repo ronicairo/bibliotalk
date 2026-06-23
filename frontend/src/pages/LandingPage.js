@@ -5,7 +5,7 @@ export default function LandingPage() {
   return (
     <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)" }}>
       {/* Barre du haut */}
-      <header style={{ display: "flex", alignItems: "center", padding: "16px 28px", maxWidth: 1200, margin: "0 auto" }}>
+      <header style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 12, padding: "16px 20px", maxWidth: 1200, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, fontWeight: 800, fontSize: 20, color: "var(--title)" }}>
           <img src="/logo1.png" alt="BiblioTalk" style={{ height: 38, width: 38, borderRadius: 9 }} />
           BiblioTalk
