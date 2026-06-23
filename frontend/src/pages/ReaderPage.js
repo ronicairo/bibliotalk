@@ -26,6 +26,7 @@ export default function ReaderPage() {
   const [scale, setScale] = useState(1.2);
   const [fitToWidth, setFitToWidth] = useState(true);
   const [docTitle, setDocTitle] = useState("");
+  const [pdfError, setPdfError] = useState(null);
 
   // State Chat
   const [question, setQuestion] = useState("");
@@ -49,6 +50,10 @@ export default function ReaderPage() {
           setPdf(loaded);
           setNumPages(loaded.numPages);
           setPageNum(1);
+          setPdfError(null);
+        }).catch((err) => {
+          console.error("Chargement PDF échoué:", err);
+          setPdfError(err?.message || "Impossible de charger le PDF.");
         });
       }
     })();
@@ -157,7 +162,15 @@ export default function ReaderPage() {
         </div>
         {/* Zone PDF */}
         <div ref={scrollRef} style={{ overflowY: "auto", overflowX: "hidden", minHeight: 0, padding: 16, display: "flex", justifyContent: "center", alignItems: "flex-start", background: "var(--bg)" }}>
-          <canvas ref={canvasRef} style={{ display: "block", borderRadius: 8, boxShadow: "var(--shadow)" }} />
+          {pdfError && (
+            <div style={{ maxWidth: 420, margin: "auto", padding: 20, textAlign: "center", color: "var(--text)", background: "var(--card)", border: "1px solid var(--danger)", borderRadius: 12 }}>
+              <div style={{ fontSize: 30, marginBottom: 8 }}>⚠️</div>
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>Le PDF n'a pas pu se charger</div>
+              <div style={{ fontSize: 13, opacity: 0.75 }}>{pdfError}</div>
+              <div style={{ fontSize: 12.5, opacity: 0.6, marginTop: 10 }}>Si tu utilises un VPN ou un bloqueur de publicités, désactive-le sur ce site puis recharge.</div>
+            </div>
+          )}
+          <canvas ref={canvasRef} style={{ display: pdfError ? "none" : "block", borderRadius: 8, boxShadow: "var(--shadow)" }} />
         </div>
       </div>
 
