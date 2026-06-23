@@ -5,10 +5,8 @@ import api, { API_BASE } from "../api";
 import { useAuth } from "../auth/AuthContext";
 import useIsMobile from "../hooks/useIsMobile";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.js",
-  import.meta.url
-).toString();
+// Worker servi depuis public/ (même origine, build-safe) — évite le bug "require is not defined" en prod
+pdfjsLib.GlobalWorkerOptions.workerSrc = `${process.env.PUBLIC_URL || ""}/pdf.worker.min.js`;
 
 export default function SharePage() {
   const { token } = useParams();
